@@ -60,30 +60,38 @@ export function GoogleSheetsConnect() {
     toast.success("連線設定完成！");
   };
 
-  const handleSync = async () => {
+    const handleSync = async () => {
     setSyncing(true);
     try {
-      const savedUrl = localStorage.getItem("gas-url-link");
-      if (!savedUrl) throw new Error("找不到連線網址");
-
-      const response = await fetch(savedUrl);
-      const data = await response.json();
+      // 1. 從用戶貼上的 Google Sheet 網址提取 ID
+      const sheetIdMatch = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      if (!sheetIdMatch) throw new Error("網址格式不對喔");
+      const sheetId = sheetIdMatch[1];
+  
+      // 2. 使用 Google Visualization API 直接抓取資料（不需 GAS）
+      // 注意：試算表必須設定為「知道連結的使用者即可查看」
+      const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
       
-      console.log("從試算表抓到的資料：", data);
-
-      // 存入 LocalStorage 供 Dashboard 使用
-      localStorage.setItem("raw-spending-data", JSON.stringify(data));
+      const response = await fetch(url);
+      const csvText = await response.text();
       
-      if (config) {
-        const updated = { ...config, lastSyncAt: new Date().toISOString() };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        setConfig(updated);
-      }
-      
-      toast.success(`同步完成！已匯入 ${data.length} 筆紀錄`);
+      // 3. 解析 CSV 並轉換成你的資料格式
+      const rows = csvText.split('\n').slice(1); // 跳過標題
+      const parsedData = rows.map(row => {
+        const cols = row.split(',').map(c => c.replace(/"/g, '')); // 去除引號
+        return {
+          date: cols[0],
+          amount: cols[1],
+          type: cols[2],
+          paymentTool: cols[3],
+          cardName: cols[4]
+        };
+      });
+  
+      localStorage.setItem("raw-spending-data", JSON.stringify(parsedData));
+      toast.success("同步成功！資料已經更新了。");
     } catch (error) {
-      console.error("同步失敗:", error);
-      toast.error("同步失敗，請確認網址正確且權限已設為『任何人』");
+      toast.error("同步失敗，請確認試算表有開啟「知道連結的人即可查看」的權限。");
     } finally {
       setSyncing(false);
     }
