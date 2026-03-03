@@ -31,6 +31,7 @@ export interface GoogleSheetConfig {
     date: string;
     amount: string;
     type: string;
+    paymentTool: string; // 補上這行
     cardName: string;
   };
   syncFrequency: "manual" | "daily" | "hourly";
