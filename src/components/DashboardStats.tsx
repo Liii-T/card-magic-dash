@@ -1,5 +1,5 @@
-import { CreditCard } from "@/types/card";
-import { calculateReward, isExpiringSoon, getDaysUntilExpiry } from "@/lib/cardUtils";
+import { CreditCard, SPENDING_CATEGORY_LABELS, SpendingCategory } from "@/types/card";
+import { calculateReward, calculateRuleReward, isExpiringSoon, getDaysUntilExpiry, getTotalMonthlySpent } from "@/lib/cardUtils";
 import { DollarSign, TrendingUp, AlertTriangle, Clock } from "lucide-react";
 
 interface DashboardStatsProps {
@@ -7,9 +7,19 @@ interface DashboardStatsProps {
 }
 
 export function DashboardStats({ cards }: DashboardStatsProps) {
-  const totalSpent = cards.reduce((sum, c) => sum + c.monthlySpent, 0);
+  const totalSpent = cards.reduce((sum, c) => sum + getTotalMonthlySpent(c), 0);
   const totalReward = cards.reduce((sum, c) => sum + calculateReward(c), 0);
   const expiringCards = cards.filter(isExpiringSoon);
+
+  // Aggregate by category
+  const categoryStats = cards.reduce<Record<SpendingCategory, { spent: number; reward: number }>>((acc, card) => {
+    card.rewardRules.forEach((rule) => {
+      if (!acc[rule.category]) acc[rule.category] = { spent: 0, reward: 0 };
+      acc[rule.category].spent += rule.monthlySpent;
+      acc[rule.category].reward += calculateRuleReward(rule);
+    });
+    return acc;
+  }, {} as any);
 
   return (
     <div className="space-y-4 animate-slide-up">
@@ -30,6 +40,22 @@ export function DashboardStats({ cards }: DashboardStatsProps) {
           <p className="text-2xl font-bold text-accent-foreground">${totalReward.toLocaleString()}</p>
         </div>
       </div>
+
+      {/* Category breakdown */}
+      {Object.keys(categoryStats).length > 0 && (
+        <div className="bg-card rounded-xl p-4 border border-border space-y-3">
+          <h3 className="text-sm font-semibold">分類回饋統計</h3>
+          {(Object.entries(categoryStats) as [SpendingCategory, { spent: number; reward: number }][]).map(([cat, stats]) => (
+            <div key={cat} className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">{SPENDING_CATEGORY_LABELS[cat]}</span>
+              <div className="text-right">
+                <span className="font-medium">${stats.reward.toLocaleString()}</span>
+                <span className="text-xs text-muted-foreground ml-2">/ 消費 ${stats.spent.toLocaleString()}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Expiring alerts */}
       {expiringCards.length > 0 && (

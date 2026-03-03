@@ -6,7 +6,27 @@ const STORAGE_KEY = "credit-cards";
 function loadCards(): CreditCard[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    if (!data) return [];
+    const parsed = JSON.parse(data);
+    // Migration: convert old format to new
+    return parsed.map((c: any) => {
+      if (c.rewardRules) return c;
+      // Old format migration
+      return {
+        id: c.id,
+        name: c.name,
+        bank: c.bank,
+        expiryDate: c.expiryDate,
+        rewardRules: [{
+          category: "domestic" as const,
+          baseReward: c.baseReward || 0,
+          bonusReward: c.bonusReward || 0,
+          rewardCap: c.rewardCap || 0,
+          spendingThreshold: c.spendingThreshold || 0,
+          monthlySpent: c.monthlySpent || 0,
+        }],
+      };
+    });
   } catch {
     return [];
   }
