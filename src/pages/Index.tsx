@@ -6,11 +6,18 @@ import { CreditCardItem } from "@/components/CreditCardItem";
 import { CardFormDialog } from "@/components/CardFormDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { BottomNav } from "@/components/BottomNav";
+import { GoogleSheetsConnect } from "@/components/GoogleSheetsConnect";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
+const TAB_TITLES: Record<string, string> = {
+  dashboard: "💳 回饋總覽",
+  cards: "💳 我的卡片",
+  sheets: "📊 記帳表連線",
+};
 
 const Index = () => {
   const { cards, addCard, updateCard, deleteCard } = useCards();
-  const [activeTab, setActiveTab] = useState<"dashboard" | "cards">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "cards" | "sheets">("dashboard");
   const [formOpen, setFormOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -43,38 +50,27 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-lg mx-auto px-4 py-4">
-          <h1 className="text-xl font-bold">
-            {activeTab === "dashboard" ? "💳 回饋總覽" : "💳 我的卡片"}
-          </h1>
+          <h1 className="text-xl font-bold">{TAB_TITLES[activeTab]}</h1>
         </div>
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-4">
         {activeTab === "dashboard" ? (
-          cards.length === 0 ? (
-            <EmptyState onAddCard={handleAddCard} />
-          ) : (
-            <DashboardStats cards={cards} />
-          )
-        ) : (
+          cards.length === 0 ? <EmptyState onAddCard={handleAddCard} /> : <DashboardStats cards={cards} />
+        ) : activeTab === "cards" ? (
           cards.length === 0 ? (
             <EmptyState onAddCard={handleAddCard} />
           ) : (
             <div className="space-y-4">
               {cards.map((card, i) => (
-                <CreditCardItem
-                  key={card.id}
-                  card={card}
-                  index={i}
-                  onEdit={handleEdit}
-                  onDelete={(id) => setDeletingId(id)}
-                />
+                <CreditCardItem key={card.id} card={card} index={i} onEdit={handleEdit} onDelete={(id) => setDeletingId(id)} />
               ))}
             </div>
           )
+        ) : (
+          <GoogleSheetsConnect />
         )}
       </main>
 
