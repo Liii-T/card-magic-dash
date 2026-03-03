@@ -24,7 +24,7 @@ function saveConfig(config: GoogleSheetConfig) {
 
 export function GoogleSheetsConnect() {
   const [config, setConfig] = useState<GoogleSheetConfig | null>(loadConfig);
-  const [step, setStep] = useState<"connect" | "select" | "mapping" | "sync" | "done">(
+  const [step, setStep] = useState<"connect" | "done">(
     config?.connected ? "done" : "connect"
   );
   const [sheetUrl, setSheetUrl] = useState("");
@@ -78,17 +78,37 @@ export function GoogleSheetsConnect() {
     toast.success("Google Sheet 連線設定完成！");
   };
 
-  const handleSync = () => {
+  const handleSync = async () => {
     setSyncing(true);
-    setTimeout(() => {
-      setSyncing(false);
-      toast.info("同步功能需要後端服務才能實際運作。");
+    try {
+      // 這裡請填入你剛才部署 Google Apps Script 後得到的「網頁應用程式網址」
+      const GAS_URL = "你的_GAS_網頁應用程式網址"; 
+      
+      // 真正去抓資料
+      const response = await fetch(GAS_URL);
+      const data = await response.json();
+      
+      console.log("從試算表抓到的資料：", data);
+  
+      // 把抓到的資料存進手機的儲存空間 (LocalStorage)
+      // 這樣 Dashboard 才能讀到這些真實的消費紀錄
+      localStorage.setItem("raw-spending-data", JSON.stringify(data));
+      
+      // 更新連線狀態與最後同步時間
       if (config) {
         const updated = { ...config, lastSyncAt: new Date().toISOString() };
-        saveConfig(updated);
+        // 這邊呼叫原有的存檔功能
+        localStorage.setItem("google-sheet-config", JSON.stringify(updated));
         setConfig(updated);
       }
-    }, 1500);
+      
+      toast.success(`同步完成！已成功匯入 ${data.length} 筆資料`);
+    } catch (error) {
+      console.error("同步失敗:", error);
+      toast.error("同步失敗，請檢查網路，或確認 GAS 網址是否正確並設定為『任何人』存取");
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const handleDisconnect = () => {
